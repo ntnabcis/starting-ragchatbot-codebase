@@ -1,36 +1,111 @@
+"""
+Document processing module for parsing and chunking course materials.
+
+This module handles the extraction of structured information from course
+documents, including metadata parsing, lesson identification, and intelligent
+text chunking for vector storage. It's designed to work with a specific
+document format but can be extended for other formats.
+"""
+
 import os
 import re
 from typing import List, Tuple
 from models import Course, Lesson, CourseChunk
 
+
 class DocumentProcessor:
-    """Processes course documents and extracts structured information"""
+    """
+    Processes course documents into structured data and searchable chunks.
+    
+    This class handles the complete pipeline from raw text files to structured
+    Course objects and searchable CourseChunk objects. It implements intelligent
+    sentence-based chunking with configurable overlap to maintain context.
+    
+    Expected Document Format:
+        Line 1: Course Title: [title]
+        Line 2: Course Link: [url] (optional)
+        Line 3: Course Instructor: [name] (optional)
+        Remaining: Lesson markers and content
+        
+        Lesson Format: "Lesson N: Title" followed by content
+    
+    Attributes:
+        chunk_size: Target size for each text chunk in characters
+        chunk_overlap: Number of characters to overlap between chunks
+    """
     
     def __init__(self, chunk_size: int, chunk_overlap: int):
+        """
+        Initialize the document processor with chunking parameters.
+        
+        Args:
+            chunk_size: Maximum characters per chunk (affects search granularity)
+            chunk_overlap: Characters to overlap (preserves context between chunks)
+        """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
     
     def read_file(self, file_path: str) -> str:
-        """Read content from file with UTF-8 encoding"""
+        """
+        Read text content from a file with proper encoding handling.
+        
+        Attempts UTF-8 encoding first, then falls back to UTF-8 with error
+        ignoring for files with mixed encodings. This ensures the system
+        doesn't crash on malformed documents.
+        
+        Args:
+            file_path: Path to the text file to read
+            
+        Returns:
+            File content as a string
+            
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            IOError: If file cannot be read due to permissions
+        """
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.read()
         except UnicodeDecodeError:
-            # If UTF-8 fails, try with error handling
+            # Fallback for files with encoding issues
+            # This preserves as much content as possible
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
                 return file.read()
     
 
 
     def chunk_text(self, text: str) -> List[str]:
-        """Split text into sentence-based chunks with overlap using config settings"""
+        """
+        Split text into sentence-based chunks with configurable overlap.
         
-        # Clean up the text
-        text = re.sub(r'\s+', ' ', text.strip())  # Normalize whitespace
+        This method implements intelligent chunking that:
+        1. Preserves sentence boundaries (doesn't split mid-sentence)
+        2. Maintains context through overlapping chunks
+        3. Handles abbreviations and edge cases in sentence detection
         
-        # Better sentence splitting that handles abbreviations
-        # This regex looks for periods followed by whitespace and capital letters
-        # but ignores common abbreviations
+        The chunking strategy optimizes for semantic coherence by keeping
+        related sentences together while respecting size limits.
+        
+        Args:
+            text: Input text to be chunked
+            
+        Returns:
+            List of text chunks, each within size limits
+            
+        Algorithm:
+            1. Split text into sentences using regex that handles abbreviations
+            2. Build chunks by accumulating sentences up to chunk_size
+            3. Create overlap by including last N characters in next chunk
+            4. Ensure no information is lost between chunks
+        """
+        
+        # Normalize whitespace for consistent processing
+        text = re.sub(r'\s+', ' ', text.strip())
+        
+        # Advanced sentence detection regex
+        # Negative lookbehinds prevent splitting on:
+        # - Abbreviations like "Dr.", "Mr.", etc.
+        # - Decimal numbers like "3.14"
         sentence_endings = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\!|\?)\s+(?=[A-Z])')
         sentences = sentence_endings.split(text)
         
@@ -52,7 +127,8 @@ class DocumentProcessor:
                 space_size = 1 if current_chunk else 0
                 total_addition = len(sentence) + space_size
                 
-                # Check if adding this sentence would exceed chunk size
+                # Stop if adding this sentence exceeds size limit
+                # Exception: always include at least one sentence per chunk
                 if current_size + total_addition > self.chunk_size and current_chunk:
                     break
                 
@@ -63,13 +139,13 @@ class DocumentProcessor:
             if current_chunk:
                 chunks.append(' '.join(current_chunk))
                 
-                # Calculate overlap for next chunk
+                # Implement overlap strategy for context preservation
                 if hasattr(self, 'chunk_overlap') and self.chunk_overlap > 0:
-                    # Find how many sentences to overlap
+                    # Calculate how many sentences from the end to include in next chunk
                     overlap_size = 0
                     overlap_sentences = 0
                     
-                    # Count backwards from end of current chunk
+                    # Work backwards to find sentences that fit in overlap window
                     for k in range(len(current_chunk) - 1, -1, -1):
                         sentence_len = len(current_chunk[k]) + (1 if k < len(current_chunk) - 1 else 0)
                         if overlap_size + sentence_len <= self.chunk_overlap:
@@ -96,19 +172,42 @@ class DocumentProcessor:
     
     def process_course_document(self, file_path: str) -> Tuple[Course, List[CourseChunk]]:
         """
-        Process a course document with expected format:
-        Line 1: Course Title: [title]
-        Line 2: Course Link: [url]
-        Line 3: Course Instructor: [instructor]
-        Following lines: Lesson markers and content
+        Parse a course document into structured Course and CourseChunk objects.
+        
+        This method handles the complete document processing pipeline:
+        1. Extract course metadata from header lines
+        2. Identify and parse individual lessons
+        3. Chunk lesson content for vector storage
+        4. Add contextual information to chunks for better search
+        
+        Args:
+            file_path: Path to the course document file
+            
+        Returns:
+            Tuple containing:
+            - Course object with metadata and lessons
+            - List of CourseChunk objects ready for vector storage
+            
+        Document Format Expected:
+            Line 1: Course Title: [title]
+            Line 2: Course Link: [url] (optional)
+            Line 3: Course Instructor: [instructor] (optional)
+            Following: Lesson markers ("Lesson N: Title") and content
+            
+        Edge Cases Handled:
+            - Missing metadata lines (uses defaults)
+            - Documents without lesson structure (treats as single chunk)
+            - Multiple blank lines between sections
+            - Lesson links immediately after lesson titles
         """
         content = self.read_file(file_path)
         filename = os.path.basename(file_path)
         
         lines = content.strip().split('\n')
         
-        # Extract course metadata from first three lines
-        course_title = filename  # Default fallback
+        # Initialize metadata with sensible defaults
+        # Filename as title ensures we always have an identifier
+        course_title = filename  # Fallback if no title found
         course_link = None
         instructor_name = "Unknown"
         
@@ -162,7 +261,8 @@ class DocumentProcessor:
         while i < len(lines):
             line = lines[i]
             
-            # Check for lesson markers (e.g., "Lesson 0: Introduction")
+            # Detect lesson boundaries using pattern matching
+            # Format: "Lesson N: Title" where N is lesson number
             lesson_match = re.match(r'^Lesson\s+(\d+):\s*(.+)$', line.strip(), re.IGNORECASE)
             
             if lesson_match:
@@ -178,10 +278,11 @@ class DocumentProcessor:
                         )
                         course.lessons.append(lesson)
                         
-                        # Create chunks for this lesson
+                        # Create searchable chunks from lesson content
                         chunks = self.chunk_text(lesson_text)
                         for idx, chunk in enumerate(chunks):
-                            # For the first chunk of each lesson, add lesson context
+                            # Add contextual prefix to first chunk for better search relevance
+                            # This helps the AI understand the chunk's position in the course
                             if idx == 0:
                                 chunk_with_context = f"Lesson {current_lesson} content: {chunk}"
                             else:
@@ -242,7 +343,8 @@ class DocumentProcessor:
                     course_chunks.append(course_chunk)
                     chunk_counter += 1
         
-        # If no lessons found, treat entire content as one document
+        # Fallback: Handle documents without lesson structure
+        # This ensures all content is indexed even if format is unexpected
         if not course_chunks and len(lines) > 2:
             remaining_content = '\n'.join(lines[start_index:]).strip()
             if remaining_content:
@@ -251,7 +353,7 @@ class DocumentProcessor:
                     course_chunk = CourseChunk(
                         content=chunk,
                         course_title=course.title,
-                        chunk_index=chunk_counter
+                        chunk_index=chunk_counter  # No lesson_number for unstructured content
                     )
                     course_chunks.append(course_chunk)
                     chunk_counter += 1
