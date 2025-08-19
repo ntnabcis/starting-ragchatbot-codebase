@@ -54,3 +54,46 @@ The application will be available at:
 - Web Interface: `http://localhost:8000`
 - API Documentation: `http://localhost:8000/docs`
 
+## Testing
+
+### Running Tests
+
+Use the provided test script for various testing options:
+
+```bash
+# Run all tests
+./run_tests.sh
+
+# Run with verbose output
+./run_tests.sh -v
+
+# Run with coverage report
+./run_tests.sh -c
+
+# Run with HTML coverage report
+./run_tests.sh -ch
+
+# Run specific test file
+./run_tests.sh -t test_document_processor.py
+
+# Run specific test class
+./run_tests.sh -t TestChunkText
+
+# Quick test run (minimal output)
+./run_tests.sh -q
+
+# Full test suite with all reports
+./run_tests.sh -a
+```
+
+### Manual Test Execution
+
+If you prefer to run tests manually:
+
+```bash
+cd backend
+uv run pytest tests/                          # Run all tests
+uv run pytest tests/ -v                       # Verbose output
+uv run pytest tests/ --cov=. --cov-report=term-missing  # With coverage
+```
+
