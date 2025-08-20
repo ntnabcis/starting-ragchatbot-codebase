@@ -1,0 +1,36 @@
+# Development Dockerfile with hot-reloading support
+FROM python:3.13-slim
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies including dev dependencies
+RUN uv sync --frozen
+
+# Set environment variables for development
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    UV_SYSTEM_PYTHON=1 \
+    PYTHONPATH=/app/backend
+
+# Create necessary directories
+RUN mkdir -p /app/backend/chroma_db
+
+# Expose port
+EXPOSE 8000
+
+# Default command (will be overridden by docker-compose.override.yml)
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

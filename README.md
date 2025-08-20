@@ -9,12 +9,37 @@ This application is a full-stack web application that enables users to query cou
 
 ## Prerequisites
 
+### Option 1: Docker (Recommended)
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- An Anthropic API key (for Claude AI)
+
+### Option 2: Local Development
 - Python 3.13 or higher
 - uv (Python package manager)
 - An Anthropic API key (for Claude AI)
 - **For Windows**: Use Git Bash to run the application commands - [Download Git for Windows](https://git-scm.com/downloads/win)
 
 ## Installation
+
+### Docker Setup (Recommended)
+
+1. **Clone the repository and set up environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your ANTHROPIC_API_KEY
+   ```
+
+2. **Run with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+The application will be available at `http://localhost:8000`
+
+For detailed Docker instructions, see [DOCKER.md](./DOCKER.md)
+
+### Local Development Setup
 
 1. **Install uv** (if not already installed)
    ```bash
@@ -35,7 +60,26 @@ This application is a full-stack web application that enables users to query cou
 
 ## Running the Application
 
-### Quick Start
+### Docker (Production)
+
+```bash
+# Start the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the application
+docker-compose down
+```
+
+### Docker (Development with hot-reload)
+
+```bash
+docker-compose up
+```
+
+### Local Development
 
 Use the provided shell script:
 ```bash
@@ -43,8 +87,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-### Manual Start
-
+Or manually:
 ```bash
 cd backend
 uv run uvicorn app:app --reload --port 8000
