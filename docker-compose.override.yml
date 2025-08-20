@@ -1,0 +1,21 @@
+# Development override configuration
+# This file is automatically loaded by docker-compose in development
+
+services:
+  rag-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - DEBUG=true
+      - RELOAD=true
+    volumes:
+      # Mount source code for hot reloading
+      - ./backend:/app/backend:ro
+      - ./frontend:/app/frontend:ro
+      - ./docs:/app/docs:ro
+      # Persist ChromaDB data in development
+      - chroma_data:/app/data/chroma_db
+    command: ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    stdin_open: true
+    tty: true

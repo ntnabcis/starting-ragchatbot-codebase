@@ -1,0 +1,45 @@
+services:
+  rag-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - python:3.13-slim
+    image: rag-chatbot:latest
+    container_name: rag-backend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      - CHUNK_SIZE=${CHUNK_SIZE:-800}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-100}
+      - MAX_RESULTS=${MAX_RESULTS:-5}
+      - MAX_HISTORY=${MAX_HISTORY:-2}
+      - CHROMA_PATH=/app/data/chroma_db
+    volumes:
+      - chroma_data:/app/data/chroma_db
+      - ./docs:/app/docs:ro
+    networks:
+      - rag-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+volumes:
+  chroma_data:
+    driver: local
+
+networks:
+  rag-network:
+    driver: bridge

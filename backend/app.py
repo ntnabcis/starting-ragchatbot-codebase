@@ -88,14 +88,23 @@ async def get_course_stats():
 @app.on_event("startup")
 async def startup_event():
     """Load initial documents on startup"""
-    docs_path = "../docs"
-    if os.path.exists(docs_path):
-        print("Loading initial documents...")
+    # Handle both Docker and local paths
+    docs_paths = ["/app/docs", "../docs"]
+    docs_path = None
+    for path in docs_paths:
+        if os.path.exists(path):
+            docs_path = path
+            break
+    
+    if docs_path:
+        print(f"Loading initial documents from {docs_path}...")
         try:
             courses, chunks = rag_system.add_course_folder(docs_path, clear_existing=False)
             print(f"Loaded {courses} courses with {chunks} chunks")
         except Exception as e:
             print(f"Error loading documents: {e}")
+    else:
+        print("No documents folder found, skipping initial document loading")
 
 # Custom static file handler with no-cache headers for development
 from fastapi.staticfiles import StaticFiles
@@ -116,4 +125,15 @@ class DevStaticFiles(StaticFiles):
     
     
 # Serve static files for the frontend
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
+# Handle both Docker and local paths
+frontend_paths = ["/app/frontend", "../frontend"]
+frontend_path = None
+for path in frontend_paths:
+    if os.path.exists(path):
+        frontend_path = path
+        break
+
+if frontend_path:
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
+else:
+    print("Warning: Frontend directory not found, static files will not be served")
