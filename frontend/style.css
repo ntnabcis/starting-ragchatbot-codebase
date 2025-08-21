@@ -5,10 +5,31 @@
     padding: 0;
 }
 
-/* CSS Variables */
+/* CSS Variables - Light Theme (Default) */
 :root {
     --primary-color: #2563eb;
     --primary-hover: #1d4ed8;
+    --background: #ffffff;
+    --surface: #f8fafc;
+    --surface-hover: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --user-message: #2563eb;
+    --assistant-message: #f1f5f9;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --radius: 12px;
+    --focus-ring: rgba(37, 99, 235, 0.2);
+    --welcome-bg: #e0f2fe;
+    --welcome-border: #2563eb;
+    --code-bg: rgba(0, 0, 0, 0.05);
+    --transition-speed: 0.3s;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
     --background: #0f172a;
     --surface: #1e293b;
     --surface-hover: #334155;
@@ -18,10 +39,10 @@
     --user-message: #2563eb;
     --assistant-message: #374151;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    --radius: 12px;
-    --focus-ring: rgba(37, 99, 235, 0.2);
+    --focus-ring: rgba(59, 130, 246, 0.2);
     --welcome-bg: #1e3a5f;
-    --welcome-border: #2563eb;
+    --welcome-border: #3b82f6;
+    --code-bg: rgba(0, 0, 0, 0.2);
 }
 
 /* Base Styles */
@@ -34,6 +55,7 @@ body {
     overflow: hidden;
     margin: 0;
     padding: 0;
+    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
 }
 
 /* Container - Full Screen */
@@ -46,9 +68,15 @@ body {
     padding: 0;
 }
 
-/* Header - Hidden */
+/* Header - Now visible for theme toggle */
 header {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-speed) ease;
 }
 
 header h1 {
@@ -65,6 +93,79 @@ header h1 {
     font-size: 0.95rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    position: relative;
+    width: 60px;
+    height: 30px;
+    background: var(--border-color);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 5px;
+}
+
+.theme-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.theme-toggle:hover {
+    background: var(--surface-hover);
+}
+
+.theme-toggle-slider {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    transition: transform var(--transition-speed) ease;
+    left: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .theme-toggle-slider {
+    transform: translateX(30px);
+}
+
+.theme-toggle-icon {
+    width: 16px;
+    height: 16px;
+    z-index: 1;
+    color: var(--text-secondary);
+}
+
+.theme-toggle-icon.sun {
+    color: #fbbf24;
+}
+
+.theme-toggle-icon.moon {
+    color: #60a5fa;
+}
+
+.header-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.theme-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 /* Main Content Area with Sidebar */
@@ -277,7 +378,7 @@ header h1 {
 }
 
 .message-content code {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: var(--code-bg);
     padding: 0.125rem 0.25rem;
     border-radius: 3px;
     font-family: 'Fira Code', 'Consolas', monospace;
@@ -285,7 +386,7 @@ header h1 {
 }
 
 .message-content pre {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: var(--code-bg);
     padding: 0.75rem;
     border-radius: 4px;
     overflow-x: auto;
@@ -636,6 +737,17 @@ details[open] .suggested-header::before {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    
+    .header-controls {
+        align-self: flex-end;
+    }
+    
     .main-content {
         flex-direction: column;
     }
